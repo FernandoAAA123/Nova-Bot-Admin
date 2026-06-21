@@ -8,7 +8,8 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, get, remove, onValue }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged }
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged, setPersistence, browserLocalPersistence }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -26,10 +27,14 @@
   const db   = getDatabase(app);
   const provider = new GoogleAuthProvider();
 
+  // Misma persistencia que Nova: la sesión se compatibiliza entre pestañas del mismo navegador
+  setPersistence(auth, browserLocalPersistence).catch(()=>{});
+
   window._db = db; window._auth = auth;
   window._fbRef = ref; window._fbSet = set; window._fbGet = get;
   window._fbRemove = remove; window._fbOnValue = onValue;
-  window._fbSignIn = () => signInWithPopup(auth, provider);
+  window._fbSignInGoogle = () => signInWithPopup(auth, provider);
+  window._fbSignInEmail  = (e,p) => signInWithEmailAndPassword(auth, e, p);
   window._fbSignOut = () => signOut(auth);
   window._fbOnAuth = (cb) => onAuthStateChanged(auth, cb);
   window._firebaseReady = true;
@@ -158,11 +163,21 @@ body{font-family:var(--font);background:var(--bg-0);color:var(--text-1);min-heig
     <svg style="margin-bottom:12px" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
     <h1>Nova Bot Admin</h1>
     <p style="margin-bottom:6px;">No hay sesión activa detectada.</p>
-    <p style="font-size:.78rem;color:var(--text-3);margin-bottom:20px;">Si tienes Nova abierto en otra pestaña, esta página debería entrar automáticamente. Si no, inicia sesión aquí.</p>
-    <button class="btn btn-google" onclick="doLogin()">
+    <p style="font-size:.78rem;color:var(--text-3);margin-bottom:20px;">Si tienes Nova abierto (o iniciaste sesión antes) en este mismo navegador, esta página debería entrar automáticamente. Si no, inicia sesión con la misma cuenta que usas en Nova.</p>
+    <button class="btn btn-google" onclick="doLoginGoogle()">
       <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
       Continuar con Google
     </button>
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="font-size:.72rem;color:var(--text-3);">o con email</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;text-align:left;">
+      <input type="email" id="auth-email" placeholder="tu@email.com" style="background:var(--bg-3);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text-0);font-family:var(--font);font-size:.875rem;outline:none;width:100%;">
+      <input type="password" id="auth-pass" placeholder="Contraseña" style="background:var(--bg-3);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text-0);font-family:var(--font);font-size:.875rem;outline:none;width:100%;" onkeydown="if(event.key==='Enter')doLoginEmail()">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;" onclick="doLoginEmail()">Iniciar sesión con email</button>
+    </div>
     <div class="auth-error" id="auth-error"></div>
   </div>
 </div>
@@ -396,7 +411,8 @@ body{font-family:var(--font);background:var(--bg-0);color:var(--text-1);min-heig
 </div>
 
 <script>
-const ADMIN_UID = 'O3AFfnSv7KUQlUgzX3b6TxWbsX93';
+// ⚠️ Tu UID de Firebase Auth (el mismo con el que entras a Nova).
+const ADMIN_UID = 'DpGqEhYwhpcMCAZgpCMz6cBtNo23';
 const RARITY_ORDER = ['common','uncommon','rare','epic','legendary'];
 const RARITY_COLORS = {common:'#c8c8e0',uncommon:'#10b981',rare:'#3b82f6',epic:'#a78bfa',legendary:'#f59e0b'};
 const RARITY_ICONS  = {common:'○',uncommon:'◉',rare:'◈',epic:'◆',legendary:'★'};
@@ -411,9 +427,16 @@ async function fbGet(p){ return window._fbGet(fbRef(p)); }
 function fbRemove(p){ return window._fbRemove(fbRef(p)); }
 function fbOn(p,cb){ return window._fbOnValue(fbRef(p),cb); }
 
-async function doLogin(){
-  try{ await window._fbSignIn(); }
+async function doLoginGoogle(){
+  try{ await window._fbSignInGoogle(); }
   catch(e){ showError(e.message); }
+}
+async function doLoginEmail(){
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  if(!email || !pass){ showError('Escribe tu email y contraseña.'); return; }
+  try{ await window._fbSignInEmail(email, pass); }
+  catch(e){ showError('No se pudo iniciar sesión. Revisa tu email y contraseña.'); }
 }
 function showError(msg){ const e=document.getElementById('auth-error'); e.textContent=msg; e.classList.add('show'); }
 
@@ -421,7 +444,11 @@ function showError(msg){ const e=document.getElementById('auth-error'); e.textCo
 document.addEventListener('firebase-ready',()=>{
   window._fbOnAuth(async user=>{
     if(!user){ showAuthScreen(); return; }
-    if(user.uid !== ADMIN_UID){ showError('Access denied. This panel is admin-only.'); await window._fbSignOut(); return; }
+    if(user.uid !== ADMIN_UID){
+      showError('Acceso denegado. Tu UID es: '+user.uid+' — pégalo en ADMIN_UID dentro del código si eres tú.');
+      await window._fbSignOut();
+      return;
+    }
     document.getElementById('auth-screen').style.display='none';
     document.getElementById('app').classList.add('visible');
     document.getElementById('admin-name').textContent = user.displayName || user.email;
