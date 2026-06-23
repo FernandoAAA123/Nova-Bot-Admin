@@ -464,7 +464,55 @@ input.fi:focus,select.fi:focus,textarea.fi:focus{border-color:var(--accent);box-
         </div>
       </div>
 
-      <!-- PAGE: CREAR/EDITAR BOT DEX (genérico) -->
+      <!-- PAGE: BOT PERSONALIZADO / EXTERNO -->
+      <div class="page" id="page-edit-external">
+        <button class="back-link" onclick="showPage('type-picker')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Volver
+        </button>
+        <div class="form-box">
+          <h3 style="color:#3b82f6;">Bot personalizado por URL</h3>
+          <div class="sub">Registra un bot externo ya existente. Al activarlo se abrira en una nueva pestana.</div>
+          <div class="form-group"><label>Nombre del bot *</label><input type="text" id="ex-name" placeholder="PanDex" class="fi"></div>
+          <div class="form-group"><label>URL del bot *</label><input type="url" id="ex-url" placeholder="https://tu-usuario.github.io/pandex.html" class="fi"><div class="form-hint">URL publica del archivo HTML del bot.</div></div>
+          <div class="form-group"><label>Avatar (URL, opcional)</label><input type="url" id="ex-avatar" placeholder="https://..." class="fi"></div>
+          <div class="form-group"><label>Color</label><input type="color" id="ex-color" value="#3b82f6" style="width:56px;height:38px;padding:2px;cursor:pointer;"></div>
+          <div class="form-group"><label>Descripcion (opcional)</label><textarea id="ex-desc" class="fi" rows="2"></textarea></div>
+          <div class="form-group"><label>Comandos (opcional, uno por linea)</label><textarea id="ex-cmds" class="fi" rows="3" placeholder="/cmd - Descripcion"></textarea></div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="saveBot('external')">Guardar bot</button>
+            <button class="btn btn-ghost" onclick="showPage('list')">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: BOT DE BUSQUEDA -->
+      <div class="page" id="page-edit-search">
+        <button class="back-link" onclick="showPage('type-picker')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Volver
+        </button>
+        <div class="form-box">
+          <h3 style="color:#10b981;">Bot de busqueda</h3>
+          <div class="sub">Responde a comandos de busqueda en el canal configurado. Usa la API de Google Custom Search para imagenes y web, y la API de YouTube para videos.</div>
+          <div class="form-group"><label>Nombre del bot *</label><input type="text" id="sr-name" placeholder="SearchBot" class="fi"></div>
+          <div class="form-group"><label>Avatar (URL, opcional)</label><input type="url" id="sr-avatar" placeholder="https://..." class="fi"></div>
+          <div class="form-group"><label>Color</label><input type="color" id="sr-color" value="#10b981" style="width:56px;height:38px;padding:2px;cursor:pointer;"></div>
+          <div class="form-group"><label>Google API Key *</label><input type="text" id="sr-gkey" placeholder="AIza..." class="fi"><div class="form-hint">Necesaria para /img y /search. Obtenerla en console.cloud.google.com</div></div>
+          <div class="form-group"><label>Google Search Engine ID (CX) *</label><input type="text" id="sr-gcx" placeholder="012345678901234567890:abcdefghijk" class="fi"><div class="form-hint">Crear en programmablesearchengine.google.com</div></div>
+          <div class="form-group"><label>YouTube API Key *</label><input type="text" id="sr-ykey" placeholder="AIza..." class="fi"><div class="form-hint">Necesaria para /yt. Misma consola de Google, habilitar YouTube Data API v3.</div></div>
+          <div class="form-group"><label>Resultados por busqueda</label><input type="number" id="sr-results" value="3" min="1" max="5" class="fi"><div class="form-hint">Cuantos resultados mostrar por comando (max 5).</div></div>
+          <div class="form-group"><label>Comando imagen</label><input type="text" id="sr-imgcmd" value="/img" class="fi"></div>
+          <div class="form-group"><label>Comando busqueda web</label><input type="text" id="sr-searchcmd" value="/search" class="fi"></div>
+          <div class="form-group"><label>Comando YouTube</label><input type="text" id="sr-ytcmd" value="/yt" class="fi"></div>
+          <div class="form-group"><label>En que comunidades?</label><div class="server-pick" id="sr-servers"></div></div>
+          <div class="form-group" id="sr-channel-pickers"></div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="saveBot('search')">Guardar bot</button>
+            <button class="btn btn-ghost" onclick="showPage('list')">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: CREAR/EDITAR BOT DEX (generico) -->
       <div class="page" id="page-edit-dex">
         <button class="back-link" onclick="showPage('type-picker')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Volver
@@ -700,7 +748,10 @@ async function loadMyServers(){
 }
 
 // Tipos de bot conocidos — cualquier tipo nuevo sólo necesita añadirse aquí
-const BOT_TYPES = ['welcome','dex'];
+const BOT_TYPES = ['welcome','dex','search','external'];
+
+const MODULE_URLS = {fight:'dex-fight-module.html', mine:'dex-mine-module.html'};
+function openModule(type){ window.open(MODULE_URLS[type]||'#','_blank'); }
 // Datos de tipos huérfanos detectados al cargar (type -> count)
 let orphanedData = {};
 
@@ -727,23 +778,37 @@ async function detectOrphanedData(){
 }
 
 function renderMyBots(){
-  const el = document.getElementById('my-bots-list');
+  const el=document.getElementById('my-bots-list');
   if(!myBots.length){
-    el.innerHTML = `<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3);"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 15h.01M16 15h.01"/></svg><p>Aún no has creado ningún bot.<br>Haz clic en "Crear bot" para empezar.</p></div>`;
+    el.innerHTML=`<div class="empty"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-3);"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 15h.01M16 15h.01"/></svg><p>Aún no has creado ningún bot.<br>Haz clic en "Crear bot" para empezar.</p></div>`;
     return;
   }
-  const typeLabels={welcome:'Bienvenida',dex:'Dex'};
-  el.innerHTML = myBots.map(b=>`
-    <div class="bot-card">
+  const typeLabels={welcome:'Bienvenida',dex:'Dex',search:'Búsqueda',external:'Externo'};
+  const typeColors={search:'#10b981',external:'#3b82f6'};
+  el.innerHTML=myBots.map(b=>{
+    const label=typeLabels[b.type]||b.type;
+    const customColor=typeColors[b.type];
+    const badgeCls=customColor?'':'type-'+(b.type==='dex'?'dex':'welcome');
+    const badgeStyle=customColor?`style="color:${customColor};border-color:${customColor}33;background:${customColor}11;"`:'';
+    const meta=b.type==='external'
+      ?`<a href="${b.externalUrl||'#'}" target="_blank" style="color:#3b82f6;font-size:.75rem;">${b.externalUrl||'Sin URL'}</a>`
+      :b.type==='search'
+        ?`Comandos: ${b.imgCmd||'/img'} · ${b.searchCmd||'/search'} · ${b.ytCmd||'/yt'}`
+        :`${(b.installedServers||[]).length} comunidad${(b.installedServers||[]).length===1?'':'es'} activa${(b.installedServers||[]).length===1?'':'s'}${b.type==='dex'?' · '+(b.items||[]).length+' elementos':''}`;
+    const actionBtn=b.type==='external'
+      ?`<button class="btn btn-primary btn-sm" onclick="window.open('${b.externalUrl||'#'}','_blank')">↗ Abrir</button>`
+      :`<button class="btn btn-primary btn-sm" onclick="runBot('${b.uid}')">▶ Activar</button>`;
+    return `<div class="bot-card">
       <div class="bot-ava" style="background:${b.avatarColor||'#7c3aed'};">${b.avatarUrl?`<img src="${b.avatarUrl}">`:(b.name||'B')[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0;">
-        <div class="bot-name">${b.name}<span class="type-badge type-${b.type}">${typeLabels[b.type]||b.type}</span>${b.type==='dex'?'<span style="font-size:.65rem;color:var(--text-3);margin-left:4px;">spawn</span>':''}</div>
-        <div class="bot-meta">${(b.installedServers||[]).length} comunidad${(b.installedServers||[]).length===1?'':'es'} activa${(b.installedServers||[]).length===1?'':'s'}${b.type==='dex'?' · '+(b.items||[]).length+' elementos':''}</div>
+        <div class="bot-name">${b.name}<span class="type-badge ${badgeCls}" ${badgeStyle}>${label}</span></div>
+        <div class="bot-meta">${meta}</div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="editBot('${b.uid}')">Editar</button>
-      <button class="btn btn-primary btn-sm" onclick="runBot('${b.uid}')">▶ Activar</button>
+      ${actionBtn}
       <button class="btn btn-danger btn-sm" onclick="deleteBotMaker('${b.uid}')">Eliminar</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 let currentDexItems = []; // items del Dex que se está creando/editando
@@ -770,6 +835,20 @@ function startCreate(type){
     renderDexChannelPickers('dx');
     renderDexCardsPreview();
     showPage('edit-dex');
+  } else if(type==='search'){
+    ['sr-name','sr-avatar','sr-gkey','sr-gcx','sr-ykey'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('sr-color').value='#10b981';
+    document.getElementById('sr-results').value='3';
+    document.getElementById('sr-imgcmd').value='/img';
+    document.getElementById('sr-searchcmd').value='/search';
+    document.getElementById('sr-ytcmd').value='/yt';
+    renderServerPicker('sr-servers','sr');
+    renderSearchChannelPickers();
+    showPage('edit-search');
+  } else if(type==='external'){
+    ['ex-name','ex-url','ex-avatar','ex-desc','ex-cmds'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('ex-color').value='#3b82f6';
+    showPage('edit-external');
   }
 }
 
@@ -797,6 +876,28 @@ function editBot(id){
     document.getElementById('dx-json-status').textContent='';
     renderServerPicker('dx-servers','dx');renderDexChannelPickers('dx');renderDexCardsPreview();
     showPage('edit-dex');
+  } else if(b.type==='search'){
+    welcomeChannelChoice={...(b.searchChannels||{})};
+    document.getElementById('sr-name').value=b.name||'';
+    document.getElementById('sr-avatar').value=b.avatarUrl||'';
+    document.getElementById('sr-color').value=b.avatarColor||'#10b981';
+    document.getElementById('sr-gkey').value=b.googleApiKey||'';
+    document.getElementById('sr-gcx').value=b.googleCx||'';
+    document.getElementById('sr-ykey').value=b.youtubeApiKey||'';
+    document.getElementById('sr-results').value=b.maxResults||3;
+    document.getElementById('sr-imgcmd').value=b.imgCmd||'/img';
+    document.getElementById('sr-searchcmd').value=b.searchCmd||'/search';
+    document.getElementById('sr-ytcmd').value=b.ytCmd||'/yt';
+    renderServerPicker('sr-servers','sr');renderSearchChannelPickers();
+    showPage('edit-search');
+  } else if(b.type==='external'){
+    document.getElementById('ex-name').value=b.name||'';
+    document.getElementById('ex-url').value=b.externalUrl||'';
+    document.getElementById('ex-avatar').value=b.avatarUrl||'';
+    document.getElementById('ex-color').value=b.avatarColor||'#3b82f6';
+    document.getElementById('ex-desc').value=b.description||'';
+    document.getElementById('ex-cmds').value=(b.botCommands||[]).join('\n');
+    showPage('edit-external');
   }
 }
 
@@ -835,6 +936,47 @@ function renderWelcomeChannelPickers(){
 }
 
 async function saveBot(type){
+  if(type==='external'){
+    const name=document.getElementById('ex-name').value.trim();
+    const url=document.getElementById('ex-url').value.trim();
+    if(!name){showToast('⚠️ Ponle un nombre al bot');return;}
+    if(!url){showToast('⚠️ Ingresa la URL del bot');return;}
+    const id=editingBotId||('bot_ext_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_')+'_'+genId(5));
+    const cmds=document.getElementById('ex-cmds').value.trim().split('\n').filter(Boolean);
+    const bot={uid:id,name,type:'external',ownerId:window._currentUid,
+      avatarUrl:document.getElementById('ex-avatar').value.trim(),
+      avatarColor:document.getElementById('ex-color').value||'#3b82f6',
+      externalUrl:url,
+      description:document.getElementById('ex-desc').value.trim()||'Bot externo',
+      botCommands:cmds,installedServers:[]};
+    await fbSet('botdata/bots/'+id,bot);
+    showToast('✅ Bot externo registrado');showPage('list');return;
+  }
+  if(type==='search'){
+    const name=document.getElementById('sr-name').value.trim();
+    const gkey=document.getElementById('sr-gkey').value.trim();
+    const gcx=document.getElementById('sr-gcx').value.trim();
+    const ykey=document.getElementById('sr-ykey').value.trim();
+    if(!name){showToast('⚠️ Ponle un nombre al bot');return;}
+    if(!gkey||!gcx){showToast('⚠️ Necesitas Google API Key y CX para /img y /search');return;}
+    if(!ykey){showToast('⚠️ Necesitas YouTube API Key para /yt');return;}
+    const id=editingBotId||('bot_search_'+name.toLowerCase().replace(/[^a-z0-9]+/g,'_')+'_'+genId(5));
+    const imgCmd=document.getElementById('sr-imgcmd').value.trim()||'/img';
+    const searchCmd=document.getElementById('sr-searchcmd').value.trim()||'/search';
+    const ytCmd=document.getElementById('sr-ytcmd').value.trim()||'/yt';
+    const bot={uid:id,name,type:'search',ownerId:window._currentUid,
+      avatarUrl:document.getElementById('sr-avatar').value.trim(),
+      avatarColor:document.getElementById('sr-color').value||'#10b981',
+      googleApiKey:gkey,googleCx:gcx,youtubeApiKey:ykey,
+      maxResults:parseInt(document.getElementById('sr-results').value)||3,
+      imgCmd,searchCmd,ytCmd,
+      description:'Bot de búsqueda — '+name,
+      botCommands:[imgCmd+' [query] — Buscar imágenes',searchCmd+' [query] — Buscar en la web',ytCmd+' [query] — Buscar en YouTube'],
+      installedServers:[...selectedServers],
+      searchChannels:{...welcomeChannelChoice}};
+    await fbSet('botdata/bots/'+id,bot);
+    showToast('✅ Bot de búsqueda guardado');showPage('list');return;
+  }
   if(type==='dex'){
     const name=document.getElementById('dx-name').value.trim();
     if(!name){showToast('⚠️ Ponle un nombre al bot');return;}
@@ -877,7 +1019,91 @@ async function deleteBotMaker(id){
   await fbRemove('botdata/bots/'+id);showToast('🗑️ Bot eliminado');
 }
 
-// ── RUN BOT ──
+function renderSearchChannelPickers(){
+  const el=document.getElementById('sr-channel-pickers');if(!el)return;
+  if(!selectedServers.size){el.innerHTML='';return;}
+  el.innerHTML=Array.from(selectedServers).map(srvId=>{
+    const srv=myServers.find(s=>s.id===srvId);if(!srv)return'';
+    const channels=getAllChannelsOf(srv);
+    const current=welcomeChannelChoice[srvId]||(channels[0]?.id||'');
+    welcomeChannelChoice[srvId]=current;
+    return`<div style="margin-bottom:10px;">
+      <label style="font-size:.78rem;color:var(--text-2);display:block;margin-bottom:5px;">Canal del bot en <strong style="color:var(--text-0);">${srv.name}</strong></label>
+      <select onchange="welcomeChannelChoice['${srvId}']=this.value" style="width:100%;background:var(--bg-3);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text-0);font-family:var(--font);font-size:.85rem;outline:none;">
+        ${channels.map(ch=>`<option value="${ch.id}"${ch.id===current?' selected':''}>#${ch.name}</option>`).join('')}
+      </select></div>`;
+  }).join('');
+}
+
+// ── SEARCH BOT RUNTIME ──
+function startSearchBot(bot){
+  const channels=Object.values(bot.searchChannels||{}).filter(Boolean);
+  if(!channels.length){addLog('warn','No hay canales configurados.');return;}
+  const imgCmd=(bot.imgCmd||'/img').toLowerCase().trim();
+  const searchCmd=(bot.searchCmd||'/search').toLowerCase().trim();
+  const ytCmd=(bot.ytCmd||'/yt').toLowerCase().trim();
+  const maxResults=bot.maxResults||3;
+  addLog('info',`Search bot activo. Comandos: ${imgCmd} · ${searchCmd} · ${ytCmd}`);
+
+  channels.forEach(channelId=>{
+    let firstLoad=true;
+    const unsub=window._fbOnChildAdded(window._fbRef('state/messages/'+channelId),snap=>{
+      if(firstLoad){firstLoad=false;return;}
+      if(!snap.exists())return;
+      const msg=snap.val();if(!msg||!msg.content)return;
+      if((msg.uid||'').startsWith('bot_'))return;
+      const txt=(msg.content||'').trim();
+      const lower=txt.toLowerCase();
+      if(lower.startsWith(imgCmd+' ')){
+        const q=txt.slice(imgCmd.length+1).trim();
+        if(q) handleImgSearch(bot,channelId,msg,q,maxResults);
+      } else if(lower.startsWith(searchCmd+' ')){
+        const q=txt.slice(searchCmd.length+1).trim();
+        if(q) handleWebSearch(bot,channelId,msg,q,maxResults);
+      } else if(lower.startsWith(ytCmd+' ')){
+        const q=txt.slice(ytCmd.length+1).trim();
+        if(q) handleYTSearch(bot,channelId,msg,q,maxResults);
+      }
+    });
+    runningListeners.push(()=>{try{unsub();}catch(e){}});
+  });
+}
+
+async function handleImgSearch(bot,channelId,msg,query,maxResults){
+  addLog('info',`${msg.name||'?'} busca imagen: ${query}`);
+  try{
+    const url=`https://www.googleapis.com/customsearch/v1?key=${bot.googleApiKey}&cx=${bot.googleCx}&q=${encodeURIComponent(query)}&searchType=image&num=${maxResults}`;
+    const data=await fetch(url).then(r=>r.json());
+    if(!data.items?.length){sendBotMsg(bot,channelId,`No encontré imágenes para: ${query}`);return;}
+    const reply=`🖼️ Imágenes para "${query}":\n`+data.items.map((it,i)=>`${i+1}. ${it.link}`).join('\n');
+    sendBotMsg(bot,channelId,reply);
+    addLog('success',`Imágenes enviadas: ${query}`);
+  }catch(e){sendBotMsg(bot,channelId,`Error al buscar imágenes: ${e.message}`);addLog('error',e.message);}
+}
+
+async function handleWebSearch(bot,channelId,msg,query,maxResults){
+  addLog('info',`${msg.name||'?'} busca web: ${query}`);
+  try{
+    const url=`https://www.googleapis.com/customsearch/v1?key=${bot.googleApiKey}&cx=${bot.googleCx}&q=${encodeURIComponent(query)}&num=${maxResults}`;
+    const data=await fetch(url).then(r=>r.json());
+    if(!data.items?.length){sendBotMsg(bot,channelId,`No encontré resultados para: ${query}`);return;}
+    const reply=`🔍 Resultados para "${query}":\n\n`+data.items.map((it,i)=>`${i+1}. **${it.title}**\n${it.snippet}\n${it.link}`).join('\n\n');
+    sendBotMsg(bot,channelId,reply);
+    addLog('success',`Web enviada: ${query}`);
+  }catch(e){sendBotMsg(bot,channelId,`Error al buscar en la web: ${e.message}`);addLog('error',e.message);}
+}
+
+async function handleYTSearch(bot,channelId,msg,query,maxResults){
+  addLog('info',`${msg.name||'?'} busca YouTube: ${query}`);
+  try{
+    const url=`https://www.googleapis.com/youtube/v3/search?key=${bot.youtubeApiKey}&q=${encodeURIComponent(query)}&part=snippet&type=video&maxResults=${maxResults}`;
+    const data=await fetch(url).then(r=>r.json());
+    if(!data.items?.length){sendBotMsg(bot,channelId,`No encontré videos para: ${query}`);return;}
+    const reply=`▶️ Videos de YouTube para "${query}":\n\n`+data.items.map((it,i)=>`${i+1}. **${it.snippet.title}**\nhttps://youtu.be/${it.id.videoId}`).join('\n\n');
+    sendBotMsg(bot,channelId,reply);
+    addLog('success',`YouTube enviado: ${query}`);
+  }catch(e){sendBotMsg(bot,channelId,`Error al buscar en YouTube: ${e.message}`);addLog('error',e.message);}
+}
 function addLog(type,msg){
   const el=document.getElementById('run-log');
   const time=new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -1120,7 +1346,10 @@ async function runBot(id){
     const dexChs=Object.values(bot.dexChannels||{}).filter(Boolean);
     if(!dexChs.length){showToast('⚠️ Configura al menos un canal para este bot (Editar)');return;}
     if(!bot.items||!bot.items.length){showToast('⚠️ Este bot no tiene elementos cargados (Editar)');return;}
-  } else if(!bot.installedServers||!bot.installedServers.length){
+  } else if(bot.type==='search'){
+    const srChs=Object.values(bot.searchChannels||{}).filter(Boolean);
+    if(!srChs.length){showToast('⚠️ Configura al menos un canal para este bot (Editar)');return;}
+  } else if(bot.type!=='external'&&(!bot.installedServers||!bot.installedServers.length)){
     showToast('⚠️ Activa este bot en al menos una comunidad (Editar)');return;
   }
   runningBot=bot;lastKnownMembers={};
@@ -1130,11 +1359,12 @@ async function runBot(id){
   document.getElementById('run-name').textContent=bot.name;
   document.getElementById('run-log').innerHTML='';
   showPage('run');
-  const typeLabel=bot.type==='dex'?'Dex':'Bienvenida';
+  const typeLabel={dex:'Dex',search:'Busqueda',welcome:'Bienvenida',external:'Externo'}[bot.type]||bot.type;
   addLog('system',`${bot.name} iniciado (Bot ${typeLabel}).`);
-  await fbSet('presence/'+bot.uid,{uid:bot.uid,name:bot.name,status:'online',ts:Date.now()});
+  await fbSet('presence/'+bot.uid,{uid:bot.uid,name:bot.name,avatarUrl:bot.avatarUrl||'',avatarColor:bot.avatarColor||'#7c3aed',status:'online',isBot:true,ts:Date.now()});
   window.addEventListener('beforeunload',_beforeUnloadHandler);
   if(bot.type==='dex') startDexBot(bot);
+  else if(bot.type==='search') startSearchBot(bot);
   else startWelcomeBot(bot);
 }
 
